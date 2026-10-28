@@ -1,0 +1,25 @@
+(globalThis as any).WebSocket = require('/tmp/pw/node_modules/ws');
+(globalThis as any).window = globalThis;
+import { NetClient, type NetEvent } from '../src/game/net';
+const a = new NetClient('Аня'), b = new NetClient('Борис');
+const evB: string[] = [], evA: string[] = []; let pedsB = 0;
+b.onEvent = (f, e) => evB.push(e.e + ':' + JSON.stringify(e).slice(0, 60)); a.onEvent = (f, e) => evA.push(e.e);
+b.onPeds = (f, list) => { pedsB = list.length; };
+a.connect(); b.connect();
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  await wait(2500);
+  a.sendState({ x: 1, y: 0, z: 2, a: 0, s: 0, v: '', c: '', seat: 0, n: 'Аня', pr: [['812:0', 1], ['15:2', 0]], ls: [{ slot: 2, type: 'volga', color: '#e8e1c8', year: 1988, mil: 120000, cond: 0.7, price: 4500 }], cr: 1 });
+  a.sendPeds([[3, 540.5, 480.2, 1.2, 1, 0.5, 98765, 0], [4, 541, 481, 0, 0, 0, 12345, 3]]);
+  b.sendEvent({ e: 'pedhit', o: a.id!, i: 3, d: 30, fx: 540, fz: 479 });
+  b.sendEvent({ e: 'pay', t: a.id!, amt: 47, why: 'поездка на такси 2.3 км' });
+  b.sendEvent({ e: 'buyreq', t: a.id!, slot: 2, price: 4500 });
+  a.sendEvent({ e: 'sold', t: b.id!, slot: 2, ok: true, car: { type: 'volga', color: '#e8e1c8', year: 1988, mil: 120000, cond: 0.7 } });
+  await wait(1800);
+  const pa = b.players.get(a.id!);
+  console.log('B sees A props:', JSON.stringify(pa?.st?.pr), '| listings:', pa?.st?.ls?.length, '| crouch', pa?.st?.cr);
+  console.log('B received peds from A:', pedsB);
+  console.log('A received:', evA.join(', '));
+  console.log('B received:', evB.join(' | '));
+  a.close(); b.close(); process.exit(0);
+})();
